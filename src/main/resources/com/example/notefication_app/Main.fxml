@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.collections.FXCollections?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<?import java.lang.String?>
+<VBox fx:id="noteContainer" spacing="15" style="-fx-font-family: 'Segoe UI'; -fx-background-color: white;" VBox.vgrow="ALWAYS" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.MainController">
+
+    <!-- Top Bar -->
+    <HBox alignment="CENTER_LEFT" prefHeight="46.0" spacing="20" HBox.hgrow="ALWAYS">
+        <children>
+            <Label text="NoteFications">
+                <HBox.margin>
+                    <Insets bottom="15" left="15" top="15" />
+                </HBox.margin>
+            </Label>
+
+            <!-- Grouping Search Field and Button -->
+            <HBox alignment="CENTER_LEFT" spacing="5" HBox.hgrow="ALWAYS">
+                <children>
+                    <TextField fx:id="searchField" promptText="🔍 Search" HBox.hgrow="ALWAYS" />
+                    <Button fx:id="searchButton" style="-fx-background-color: black; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 4 10;" text="Search" />
+                </children>
+                <HBox.margin>
+                    <Insets right="15" />
+                </HBox.margin>
+            </HBox>
+        </children>
+    </HBox>
+
+    <HBox spacing="0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
+        <!-- Sidebar -->
+        <VBox alignment="TOP_CENTER" prefWidth="80" spacing="20" style="-fx-background-color: white;">
+            <children>
+                <Button fx:id="addNoteButton" prefHeight="54.0" prefWidth="54.0" style="-fx-font-size: 24px; -fx-background-color: black; -fx-text-fill: white; -fx-background-radius: 27; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 6, 0.2, 0, 2);" text="+" />
+
+                <VBox fx:id="colorPickerBox" alignment="CENTER" managed="false" spacing="10" visible="false">
+                    <children>
+                        <Button fx:id="colorYellow" prefHeight="14" prefWidth="14" style="-fx-background-color: #FFD56A; -fx-background-radius: 7;" />
+                        <Button fx:id="colorOrange" prefHeight="14" prefWidth="14" style="-fx-background-color: #F28B6C; -fx-background-radius: 7;" />
+                        <Button fx:id="colorPurple" prefHeight="14" prefWidth="14" style="-fx-background-color: #B199FF; -fx-background-radius: 7;" />
+                        <Button fx:id="colorBlue" prefHeight="14" prefWidth="14" style="-fx-background-color: #00CFFF; -fx-background-radius: 7;" />
+                        <Button fx:id="colorGreen" prefHeight="14" prefWidth="14" style="-fx-background-color: #E5FF99; -fx-background-radius: 7;" />
+                    </children>
+                </VBox>
+            </children>
+            <padding>
+                <Insets top="20" />
+            </padding>
+        </VBox>
+
+        <!-- Main Content with Scroll -->
+        <StackPane HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
+            <children>
+                <ScrollPane fx:id="notesScrollPane" fitToWidth="true" style="-fx-background-color:transparent;">
+                    <content>
+                        <VBox alignment="TOP_LEFT" spacing="20" style="-fx-background-color: #FAFAFA;" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
+                            <children>
+
+                                <!-- Filter Controls -->
+                                <HBox spacing="15" alignment="CENTER_LEFT">
+                                    <children>
+                                        <Label text="Filter by:" style="-fx-font-weight: bold;" />
+
+                                        <!-- Filter by Color -->
+                                        <ComboBox fx:id="colorFilterComboBox" promptText="Color">
+                                            <items>
+                                                <FXCollections fx:factory="observableArrayList">
+                                                    <String/>
+                                                    <String/>
+                                                    <String/>
+                                                    <String/>
+                                                    <String/>
+                                                    <String/>
+                                                </FXCollections>
+                                            </items>
+                                        </ComboBox>
+
+                                        <!-- Filter by Status -->
+                                        <ComboBox fx:id="statusFilterComboBox" promptText="Status">
+                                            <items>
+                                                <FXCollections fx:factory="observableArrayList">
+                                                    <String fx:value="All" />
+                                                    <String fx:value="Completed" />
+                                                    <String/>
+                                                </FXCollections>
+                                            </items>
+                                        </ComboBox>
+
+                                        <!-- Filter by Date -->
+                                        <DatePicker fx:id="dateFilterPicker" promptText="By Date" />
+                                    </children>
+                                </HBox>
+
+                                <!-- Header -->
+                                <Label style="-fx-font-size: 28px; -fx-font-weight: bold;" text="Notes" />
+
+                                <!-- Notes Container -->
+                                <FlowPane fx:id="notesContainer" hgap="20" prefWrapLength="800" vgap="20" VBox.vgrow="ALWAYS" />
+                            </children>
+                            <padding>
+                                <Insets bottom="20" left="20" right="20" top="10" />
+                            </padding>
+                        </VBox>
+                    </content>
+                </ScrollPane>
+
+                <!-- Back to Top -->
+                <Button fx:id="backToTopButton" style="-fx-background-color: black; -fx-text-fill: white; -fx-background-radius: 20; -fx-padding: 8 14; -fx-font-size: 13px;" text="↑ Top" visible="false" StackPane.alignment="BOTTOM_RIGHT">
+                    <StackPane.margin>
+                        <Insets bottom="20" right="20" />
+                    </StackPane.margin>
+                </Button>
+            </children>
+        </StackPane>
+    </HBox>
+</VBox>
