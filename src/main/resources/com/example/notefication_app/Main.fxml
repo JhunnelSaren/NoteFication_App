@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.collections.FXCollections?>
-<?import javafx.geometry.Insets?>
+<?import java.lang.*?>
+<?import javafx.collections.*?>
+<?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<?import java.lang.String?>
 <VBox fx:id="noteContainer" spacing="15" style="-fx-font-family: 'Segoe UI'; -fx-background-color: white;" VBox.vgrow="ALWAYS" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.MainController">
 
     <!-- Top Bar -->
@@ -60,23 +60,24 @@
                             <children>
 
                                 <!-- Filter Controls -->
-                                <HBox spacing="15" alignment="CENTER_LEFT">
+                                <HBox alignment="CENTER_LEFT" spacing="15">
                                     <children>
-                                        <Label text="Filter by:" style="-fx-font-weight: bold;" />
+                                        <Label style="-fx-font-weight: bold;" text="FILTER BY:" />
 
                                         <!-- Filter by Color -->
                                         <ComboBox fx:id="colorFilterComboBox" promptText="Color">
                                             <items>
                                                 <FXCollections fx:factory="observableArrayList">
-                                                    <String/>
-                                                    <String/>
-                                                    <String/>
-                                                    <String/>
-                                                    <String/>
-                                                    <String/>
+                                                    <String />
+                                                    <String />
+                                                    <String />
+                                                    <String />
+                                                    <String />
+                                                    <String />
                                                 </FXCollections>
                                             </items>
                                         </ComboBox>
+                              <Label text="COLOR" />
 
                                         <!-- Filter by Status -->
                                         <ComboBox fx:id="statusFilterComboBox" promptText="Status">
@@ -84,13 +85,15 @@
                                                 <FXCollections fx:factory="observableArrayList">
                                                     <String fx:value="All" />
                                                     <String fx:value="Completed" />
-                                                    <String/>
+                                                    <String />
                                                 </FXCollections>
                                             </items>
                                         </ComboBox>
+                              <Label layoutX="161.0" layoutY="14.0" text="STATUS" />
 
                                         <!-- Filter by Date -->
                                         <DatePicker fx:id="dateFilterPicker" promptText="By Date" />
+                              <Label layoutX="337.0" layoutY="14.0" text="DATE" />
                                     </children>
                                 </HBox>
 

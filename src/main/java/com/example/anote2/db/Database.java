@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@SuppressWarnings("ALL")
 public class Database {
     private static final String DB_PATH = System.getProperty("user.home") + File.separator + "anote-notes.db";
     private static final String DB_URL = "jdbc:sqlite:" + DB_PATH;
