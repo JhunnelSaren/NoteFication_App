@@ -13,7 +13,7 @@ public class Note {
     private final LocalDate date;
     private LocalDate reminderDate;
     private LocalTime reminderTime;
-    private final List<model.Task> tasks;
+    private List<Task> tasks;
 
     // Constructor for notes without reminder
     public Note(String content, String color, LocalDate date) {
@@ -48,8 +48,20 @@ public class Note {
         return date;
     }
 
-    public List<model.Task> getTasks() {
+    public List<Task> getTasks() {
         return tasks;
+    }
+
+    public void setTasks(List<Task> tasks) {
+        this.tasks = tasks;
+    }
+
+    public LocalDate getReminderDate() {
+        return reminderDate;
+    }
+
+    public LocalTime getReminderTime() {
+        return reminderTime;
     }
 
     // Method for formatted date display
@@ -78,6 +90,9 @@ public class Note {
     }
 
     public boolean isReminderDone() {
-        return false;
+        return true;
+    }
+
+    public void setReminderDone(boolean ignoredB) {
     }
 }

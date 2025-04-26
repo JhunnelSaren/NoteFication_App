@@ -1,7 +1,12 @@
 package controller;
 
-import DateTimePicker.DateTimePicker; // Importing the DateTimePicker
+import DateTimePicker.DateTimePicker;
+import com.example.anote2.db.Database;
 import javafx.animation.*;
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
@@ -9,15 +14,22 @@ import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.text.Text;
+import javafx.stage.Popup;
+import javafx.stage.Window;
 import javafx.util.Duration;
 import model.Note;
-import com.example.anote2.db.Database;
+import service.NotificationService;
 
 import java.net.URL;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class MainController implements Initializable {
 
@@ -28,14 +40,14 @@ public class MainController implements Initializable {
     @FXML private Button backToTopButton;
     @FXML private TextField searchField;
     @FXML private Button searchButton;
-
     @FXML private ComboBox<String> colorFilterComboBox;
     @FXML private ComboBox<String> statusFilterComboBox;
     @FXML private DatePicker dateFilterPicker;
+    @FXML private Button bellButton;
+    @FXML private Label reminderCountLabel; // Add this line
 
     private String selectedColor = null;
     private final List<Node> allNotes = new ArrayList<>();
-
     private static final Map<String, String> colorMap = Map.of(
             "Yellow", "#FFD56A",
             "Red", "#F28B6C",
@@ -43,11 +55,15 @@ public class MainController implements Initializable {
             "Cyan", "#00CFFF",
             "Green", "#E5FF99"
     );
+    private ScheduledExecutorService scheduler;
+    private final ObservableList<String>    reminders = FXCollections.observableArrayList();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         Database.initialize();
         loadNotesFromDatabase();
+
+        scheduler = Executors.newScheduledThreadPool(1);
 
         addNoteButton.setOnAction(_ -> toggleColorPicker());
         backToTopButton.setOnAction(_ -> scrollToTop());
@@ -61,6 +77,25 @@ public class MainController implements Initializable {
         setupScrollPane();
         setupSearchField();
         setupFilters();
+    }
+
+    private void scheduleNotification(LocalDateTime targetDateTime, Note note) {
+        long delay = Date.from(targetDateTime.atZone(ZoneId.systemDefault()).toInstant()).getTime() - System.currentTimeMillis();
+
+        if (delay > 0) {
+            scheduler.schedule(() -> {
+                System.out.println("Notification: Time to check your note!");
+                Platform.runLater(() -> NotificationService.showNotification("Note Reminder", "Time to check your note!"));
+            }, delay, TimeUnit.MILLISECONDS);
+        } else {
+            System.out.println("Cannot set reminder in the past.");
+        }
+    }
+
+    public void shutdownScheduler() {
+        if (scheduler != null && !scheduler.isShutdown()) {
+            scheduler.shutdown();
+        }
     }
 
     private void scrollToTop() {
@@ -132,9 +167,6 @@ public class MainController implements Initializable {
         statusFilterComboBox.setOnAction(_ -> applyFilters());
 
         dateFilterPicker.setOnAction(_ -> applyFilters());
-
-        // Remove labels from filter controls
-        // This section is intentionally removed as requested
     }
 
     private void toggleColorPicker() {
@@ -193,7 +225,6 @@ public class MainController implements Initializable {
                 "; -fx-background-radius: 15; -fx-padding: 15;" +
                 "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0.4, 0, 2);");
 
-        // Create a title label for the new note
         Label titleLabel = new Label("New Note");
         titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #333333;");
 
@@ -252,6 +283,8 @@ public class MainController implements Initializable {
     }
 
     private void loadNotesFromDatabase() {
+        allNotes.clear();
+        notesContainer.getChildren().clear();
         for (Note note : Database.getAllNotes()) {
             addNoteToUI(note);
         }
@@ -268,8 +301,6 @@ public class MainController implements Initializable {
         content.setWrappingWidth(190);
         content.setStyle("-fx-font-size: 14px;");
 
-        // Create horizontal box for status label and status value
-        // Only show status when there's a reminder
         HBox statusBox = new HBox(5);
         if (note.hasReminder()) {
             Label statusLabel = new Label("Status:");
@@ -281,7 +312,6 @@ public class MainController implements Initializable {
             statusBox.getChildren().addAll(statusLabel, status);
         }
 
-        // Display reminder date and time if set
         HBox reminderBox = null;
         if (note.hasReminder()) {
             reminderBox = new HBox(5);
@@ -308,11 +338,11 @@ public class MainController implements Initializable {
 
         Button editBtn = new Button("✏");
         Button deleteBtn = new Button("🗑");
-        Button reminderBtn = new Button("🔔"); // Reminder button
+        Button reminderBtn = new Button("🔔");
 
         styleIconButton(editBtn);
         styleIconButton(deleteBtn);
-        styleIconButton(reminderBtn); // Style the reminder button
+        styleIconButton(reminderBtn);
 
         editBtn.setOnAction(_ -> showEditNote(noteBox, note));
         deleteBtn.setOnAction(_ -> {
@@ -322,13 +352,11 @@ public class MainController implements Initializable {
             applyFilters();
         });
 
-        reminderBtn.setOnAction(_ -> setReminderForNote(note, note.getColor())); // Pass the note color
+        reminderBtn.setOnAction(_ -> setReminderForNote(note, note.getColor()));
 
         bottomBar.getChildren().addAll(date, hSpacer, editBtn, deleteBtn, reminderBtn);
 
-        // Add all components to the note box
         noteBox.getChildren().addAll(content);
-        // Only add statusBox if it has children (reminder exists)
         if (!statusBox.getChildren().isEmpty()) {
             noteBox.getChildren().add(statusBox);
         }
@@ -337,7 +365,6 @@ public class MainController implements Initializable {
         }
         noteBox.getChildren().addAll(spacer, bottomBar);
 
-        // Store note reference in the VBox userData
         noteBox.setUserData(note);
 
         noteBox.setOnMouseEntered(this::onNoteHoverEnter);
@@ -359,7 +386,6 @@ public class MainController implements Initializable {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Set Reminder");
 
-        // Create a styled dialog pane that matches note color
         DialogPane dialogPane = dialog.getDialogPane();
         dialogPane.setStyle("-fx-background-color: " + noteColor + ";" +
                 "-fx-background-radius: 15;" +
@@ -377,14 +403,12 @@ public class MainController implements Initializable {
         Label instructionLabel = new Label("Select date and time for your reminder:");
         instructionLabel.setStyle("-fx-font-size: 12px;");
 
-        DateTimePicker dateTimePicker = new DateTimePicker(); // Use the updated DateTimePicker
-        // Style the DateTimePicker to match the note
+        DateTimePicker dateTimePicker = new DateTimePicker();
         dateTimePicker.setStyle("-fx-background-color: white; -fx-background-radius: 8;");
 
         contentBox.getChildren().addAll(headerLabel, instructionLabel, dateTimePicker);
         dialogPane.setContent(contentBox);
 
-        // Style the buttons
         dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
         Button cancelButton = (Button) dialogPane.lookupButton(ButtonType.CANCEL);
@@ -398,9 +422,11 @@ public class MainController implements Initializable {
                 LocalTime reminderTime = dateTimePicker.getSelectedTime();
                 if (reminderDate != null && reminderTime != null) {
                     note.setReminder(reminderDate, reminderTime);
-                    Database.updateNote(note); // Update the note in the database
+                    Database.updateNote(note);
 
-                    // Remove old note and add updated one
+                    LocalDateTime reminderDateTime = LocalDateTime.of(reminderDate, reminderTime);
+                    scheduleNotification(reminderDateTime, note);
+
                     for (Node node : allNotes) {
                         if (node instanceof VBox vbox && vbox.getUserData() == note) {
                             notesContainer.getChildren().remove(vbox);
@@ -408,15 +434,13 @@ public class MainController implements Initializable {
                             break;
                         }
                     }
-                    addNoteToUI(note); // Refresh the note display to show reminder info
+                    addNoteToUI(note);
 
-                    // Notify user (optional)
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
                     alert.setTitle("Reminder Set");
                     alert.setHeaderText(null);
                     alert.setContentText("Reminder set for " + note.getFormattedReminder());
 
-                    // Style the alert to match the note color
                     DialogPane alertPane = alert.getDialogPane();
                     alertPane.setStyle("-fx-background-color: " + noteColor + ";" +
                             "-fx-background-radius: 15;" +
@@ -467,7 +491,6 @@ public class MainController implements Initializable {
         noteBox.getChildren().setAll(editBox);
     }
 
-    // Existing applyFilters() method
     private void applyFilters() {
         String selectedColorName = colorFilterComboBox.getValue();
         String selectedStatus = statusFilterComboBox.getValue();
@@ -480,13 +503,11 @@ public class MainController implements Initializable {
 
             boolean matches = true;
 
-            // Filter by color
             if (!"All".equals(selectedColorName)) {
                 String selectedColorHex = colorMap.getOrDefault(selectedColorName, "");
                 matches &= noteBox.getStyle().contains(selectedColorHex);
             }
 
-            // Filter by status
             if (!"All".equals(selectedStatus)) {
                 boolean isPending = false;
                 boolean isCompleted = false;
@@ -498,13 +519,12 @@ public class MainController implements Initializable {
                     }
                 }
                 if ("Pending".equals(selectedStatus)) {
-                    matches &= isPending; // Only show if note is pending
+                    matches &= isPending;
                 } else if ("Completed".equals(selectedStatus)) {
-                    matches &= isCompleted; // Only show if note is completed
+                    matches &= isCompleted;
                 }
             }
 
-            // Filter by date
             if (selectedDate != null) {
                 boolean dateMatched = false;
                 for (Node child : noteBox.getChildren()) {
@@ -569,11 +589,116 @@ public class MainController implements Initializable {
         noteBox.setStyle(noteBox.getStyle().replace(" -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 8, 0.3, 0, 0);", ""));
     }
 
-    public Button getSearchButton() {
-        return searchButton;
-    }
-
     public void setSearchButton(Button searchButton) {
         this.searchButton = searchButton;
+    }
+
+    @FXML
+    protected void onBellClicked(ActionEvent actionEvent) {
+        loadReminders(); // Load reminders from notes
+        if (reminders.isEmpty()) {
+            showNoRemindersMessage();
+        } else {
+            showReminderPopup(); // Show popup with reminders
+        }
+    }
+
+    private void loadReminders() {
+        reminders.clear();
+        int reminderCount = 0; // Counter for reminders
+        for (Node node : allNotes) {
+            if (node instanceof VBox noteBox) {
+                Note note = (Note) noteBox.getUserData();
+                if (note != null && note.hasReminder()) {
+                    reminders.add(note.getContent() + " - " + note.getFormattedReminder());
+                    reminderCount++; // Increment counter
+                }
+            }
+        }
+        updateReminderCountLabel(reminderCount); // Update the label
+    }
+
+    private void updateReminderCountLabel(int count) {
+        if (count > 0) {
+            reminderCountLabel.setText(String.valueOf(count));
+            reminderCountLabel.setVisible(true);
+        } else {
+            reminderCountLabel.setVisible(false);
+        }
+    }
+
+    private void showNoRemindersMessage() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("No Reminders");
+        alert.setHeaderText(null);
+        alert.setContentText("No reminders have been set.");
+
+        // Customize the alert's style
+        DialogPane dialogPane = alert.getDialogPane();
+        dialogPane.setStyle("-fx-background-color: #E0E0E0;"); // Light gray background
+        dialogPane.setHeaderText("No Reminders");
+        dialogPane.setContentText("No reminders have been set.");
+
+        // Style the OK button
+        ButtonType okButtonType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
+        alert.getButtonTypes().setAll(okButtonType);
+        Button okButton = (Button) alert.getDialogPane().lookupButton(okButtonType);
+        stylePrimaryButton(okButton);
+
+        alert.showAndWait();
+    }
+
+    private void showReminderPopup() {
+        Popup popup = new Popup();
+        popup.setAutoHide(true); // Close when clicking outside
+
+        VBox popupContent = getVBox();
+        popupContent.setStyle("""
+            -fx-background-color: white;
+            -fx-padding: 10;
+            -fx-border-color: #757575;
+            -fx-border-width: 1;
+            -fx-border-radius: 5;
+        """);
+
+        popup.getContent().add(popupContent);
+
+        // Calculate position relative to the bell button
+        Window window = bellButton.getScene().getWindow();
+        double x = window.getX() + bellButton.localToScene(bellButton.getBoundsInLocal()).getMinX() + 40;
+        double y = window.getY() + bellButton.localToScene(bellButton.getBoundsInLocal()).getMinY() + 70;
+
+        popup.show(window, x, y);
+    }
+
+    private VBox getVBox() {
+        ListView<String> listView = new ListView<>(reminders);
+        listView.setPrefWidth(300);
+        listView.setPrefHeight(200);
+
+        // Styling for the ListView
+        listView.setStyle("""
+            -fx-background-color: white;
+            -fx-border-color: #BDBDBD;
+            -fx-border-width: 1;
+            -fx-border-radius: 5;
+            -fx-padding: 5;
+        """);
+
+        // Styling for ListView items (optional)
+        listView.setCellFactory(_ -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item);
+                    setStyle("-fx-padding: 8;");
+                }
+            }
+        });
+
+        return new VBox(listView);
     }
 }

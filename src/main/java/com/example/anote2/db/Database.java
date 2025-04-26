@@ -9,6 +9,7 @@ import java.io.File;
 import java.lang.reflect.Type;
 import java.sql.*;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,7 +37,9 @@ public class Database {
                 content TEXT NOT NULL,
                 color TEXT NOT NULL,
                 date TEXT NOT NULL,
-                tasks TEXT
+                tasks TEXT,
+                reminder_date TEXT,
+                reminder_time TEXT
             );
         """;
 
@@ -50,7 +53,7 @@ public class Database {
     }
 
     public static void insertNote(Note note) {
-        String sql = "INSERT INTO notes (content, color, date, tasks) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO notes (content, color, date, tasks, reminder_date, reminder_time) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DriverManager.getConnection(DB_URL);
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -58,6 +61,16 @@ public class Database {
             pstmt.setString(2, note.getColor());
             pstmt.setString(3, note.getDate().toString());
             pstmt.setString(4, gson.toJson(note.getTasks()));
+
+            // Insert reminder date and time, handling null values
+            if (note.getReminderDate() != null) {
+                pstmt.setString(5, note.getReminderDate().toString());
+                pstmt.setString(6, note.getReminderTime().toString());
+            } else {
+                pstmt.setString(5, null);
+                pstmt.setString(6, null);
+            }
+
             pstmt.executeUpdate();
 
             ResultSet generatedKeys = pstmt.getGeneratedKeys();
@@ -73,7 +86,7 @@ public class Database {
 
     public static List<Note> getAllNotes() {
         List<Note> notes = new ArrayList<>();
-        String sql = "SELECT id, content, color, date, tasks FROM notes";
+        String sql = "SELECT id, content, color, date, tasks, reminder_date, reminder_time FROM notes";
 
         try (Connection conn = DriverManager.getConnection(DB_URL);
              Statement stmt = conn.createStatement();
@@ -86,10 +99,30 @@ public class Database {
                 LocalDate date = LocalDate.parse(rs.getString("date"));
                 String tasksJson = rs.getString("tasks");
 
+                // Retrieve reminder date and time
+                String reminderDateString = rs.getString("reminder_date");
+                String reminderTimeString = rs.getString("reminder_time");
+                LocalDate reminderDate = null;
+                LocalTime reminderTime = null;
+
+                if (reminderDateString != null) {
+                    reminderDate = LocalDate.parse(reminderDateString);
+                }
+                if (reminderTimeString != null) {
+                    reminderTime = LocalTime.parse(reminderTimeString);
+                }
+
                 List<Task> tasks = gson.fromJson(tasksJson, taskListType);
                 if (tasks == null) tasks = new ArrayList<>();
 
-                notes.add(new Note(content, color, date));
+                Note note = new Note(content, color, date);
+                note.setId(id); // Set the ID
+                note.setTasks(tasks); // Set the tasks
+                if (reminderDate != null && reminderTime != null) {
+                    note.setReminder(reminderDate, reminderTime); // Set the reminder
+                }
+
+                notes.add(note);
             }
 
             System.out.println("Loaded " + notes.size() + " notes from DB.");
@@ -101,7 +134,7 @@ public class Database {
     }
 
     public static void updateNote(Note note) {
-        String sql = "UPDATE notes SET content = ?, color = ?, date = ?, tasks = ? WHERE id = ?";
+        String sql = "UPDATE notes SET content = ?, color = ?, date = ?, tasks = ?, reminder_date = ?, reminder_time = ? WHERE id = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -109,7 +142,17 @@ public class Database {
             pstmt.setString(2, note.getColor());
             pstmt.setString(3, note.getDate().toString());
             pstmt.setString(4, gson.toJson(note.getTasks()));
-            pstmt.setInt(5, note.getId());
+
+            // Update reminder date and time, handling null values
+            if (note.getReminderDate() != null) {
+                pstmt.setString(5, note.getReminderDate().toString());
+                pstmt.setString(6, note.getReminderTime().toString());
+            } else {
+                pstmt.setString(5, null);
+                pstmt.setString(6, null);
+            }
+
+            pstmt.setInt(7, note.getId());
             pstmt.executeUpdate();
 
             System.out.println("Updated note ID " + note.getId());

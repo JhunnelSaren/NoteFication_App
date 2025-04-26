@@ -46,16 +46,21 @@ public class DateTimePicker extends VBox {
     }
 
     public LocalTime getSelectedTime() {
-        int hour = Integer.parseInt(hourPicker.getValue());
-        int minute = Integer.parseInt(minutePicker.getValue());
-        String amPm = amPmPicker.getValue();
+        try {
+            int hour = Integer.parseInt(hourPicker.getValue());
+            int minute = Integer.parseInt(minutePicker.getValue());
+            String amPm = amPmPicker.getValue();
 
-        if (amPm.equals("PM") && hour != 12) {
-            hour += 12; // Convert to 24-hour format
-        } else if (amPm.equals("AM") && hour == 12) {
-            hour = 0; // Convert 12 AM to 0 hours
+            if (amPm.equals("PM") && hour != 12) {
+                hour += 12; // Convert to 24-hour format
+            } else if (amPm.equals("AM") && hour == 12) {
+                hour = 0; // Convert 12 AM to 0 hours
+            }
+
+            return LocalTime.of(hour, minute);
+        } catch (NumberFormatException e) {
+            System.err.println("Invalid input in time pickers.");
+            return null; // Or handle the error as appropriate for your application
         }
-
-        return LocalTime.of(hour, minute);
     }
 }
