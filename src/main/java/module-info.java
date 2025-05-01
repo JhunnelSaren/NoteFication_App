@@ -5,6 +5,7 @@ module com.example.noteifcation_app {
     requires java.sql;
     requires quartz;
     requires org.controlsfx.controls;
+    requires javafx.media;
 
 
     opens com.example.notefication_app to javafx.fxml;

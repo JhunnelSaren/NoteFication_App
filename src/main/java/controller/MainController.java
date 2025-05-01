@@ -13,6 +13,8 @@ import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 import javafx.scene.text.Text;
 import javafx.stage.Popup;
 import javafx.stage.Window;
@@ -20,6 +22,7 @@ import javafx.util.Duration;
 import model.Note;
 import service.NotificationService;
 
+import java.io.File;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,6 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+@SuppressWarnings("ALL")
 public class MainController implements Initializable {
 
     public VBox noteContainer;
@@ -83,6 +87,44 @@ public class MainController implements Initializable {
         setupScrollPane();
         setupSearchField();
         setupFilters();
+
+        // Start the reminder check scheduler
+        startReminderCheckScheduler();
+    }
+
+    private void startReminderCheckScheduler() {
+        // Schedule a task to run every minute
+        scheduler.scheduleAtFixedRate(this::checkReminders, 0, 1, TimeUnit.MINUTES);
+    }
+
+    private void checkReminders() {
+        Platform.runLater(() -> {
+            for (Node node : allNotes) {
+                if (node instanceof VBox noteBox) {
+                    Note note = (Note) noteBox.getUserData();
+                    if (note != null && note.hasReminder() && !note.isReminderDone()) {
+                        LocalDateTime reminderDateTime = LocalDateTime.of(note.getReminderDate(), note.getReminderTime());
+                        boolean reminderHasPassed = reminderDateTime.isBefore(LocalDateTime.now());
+
+                        if (reminderHasPassed) {
+                            // Reminder time has passed, mark as completed
+                            note.setReminderDone(true);
+                            Database.updateNote(note);
+                            updateNoteInUI(note, noteBox); // Refresh the UI
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    private void updateNoteInUI(Note note, VBox noteBox) {
+        // Remove the old note from the UI
+        notesContainer.getChildren().remove(noteBox);
+        allNotes.remove(noteBox);
+
+        // Add the updated note back to the UI
+        addNoteToUI(note);
     }
 
     private void scheduleNotification(LocalDateTime targetDateTime, Note note) {
@@ -91,10 +133,28 @@ public class MainController implements Initializable {
         if (delay > 0) {
             scheduler.schedule(() -> {
                 System.out.println("Notification: Time to check your note!");
-                Platform.runLater(() -> NotificationService.showNotification("Note Reminder", "Time to check your note!"));
+                Platform.runLater(() -> {
+                    NotificationService.showNotification("Note Reminder", "Time to check your note!");
+                    playSound(); // Play sound when reminder is triggered
+                });
             }, delay, TimeUnit.MILLISECONDS);
         } else {
             System.out.println("Cannot set reminder in the past.");
+        }
+    }
+
+    // Method to play a sound
+    private void playSound() {
+        try {
+            String soundFile = "src/main/resources/com/example/notefication_app/sound/alarm.wav";
+            System.out.println("Attempting to play sound from: " + soundFile); // Debugging
+            Media sound = new Media(new File(soundFile).toURI().toString());
+            MediaPlayer mediaPlayer = new MediaPlayer(sound);
+            mediaPlayer.setOnError(() -> System.err.println("MediaPlayer error: " + mediaPlayer.getError().getMessage()));
+            mediaPlayer.play();
+        } catch (Exception e) {
+            System.err.println("Error playing sound: " + e.getMessage());
+            e.printStackTrace(); // Print the full stack trace for debugging
         }
     }
 

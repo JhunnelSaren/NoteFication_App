@@ -29,6 +29,20 @@
         </dependency>
 
         <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-media</artifactId>
+            <version>${javafx.version}</version>  <!-- Use the same version as other JavaFX dependencies -->
+            <classifier>desktop</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-media</artifactId>
+            <version>21.0.1</version> <!-- Or the latest version -->
+            <classifier>desktop</classifier>
+        </dependency>
+
+        <dependency>
                 <groupId>org.controlsfx</groupId>
                 <artifactId>controlsfx</artifactId>
                 <version>11.1.2</version> <!-- Or the latest version -->
