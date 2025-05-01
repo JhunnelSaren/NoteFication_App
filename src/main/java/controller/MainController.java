@@ -33,6 +33,12 @@ import java.util.concurrent.TimeUnit;
 
 public class MainController implements Initializable {
 
+    public VBox noteContainer;
+    public Button colorYellow;
+    public Button colorGreen;
+    public Button colorBlue;
+    public Button colorPurple;
+    public Button colorOrange;
     @FXML private FlowPane notesContainer;
     @FXML private Button addNoteButton;
     @FXML private VBox colorPickerBox;
