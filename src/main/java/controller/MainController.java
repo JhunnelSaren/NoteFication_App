@@ -9,6 +9,8 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
@@ -17,6 +19,7 @@ import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.text.Text;
 import javafx.stage.Popup;
+import javafx.stage.Screen;
 import javafx.stage.Window;
 import javafx.util.Duration;
 import model.Note;
@@ -43,18 +46,30 @@ public class MainController implements Initializable {
     public Button colorBlue;
     public Button colorPurple;
     public Button colorOrange;
-    @FXML private FlowPane notesContainer;
-    @FXML private Button addNoteButton;
-    @FXML private VBox colorPickerBox;
-    @FXML private ScrollPane notesScrollPane;
-    @FXML private Button backToTopButton;
-    @FXML private TextField searchField;
-    @FXML private Button searchButton;
-    @FXML private ComboBox<String> colorFilterComboBox;
-    @FXML private ComboBox<String> statusFilterComboBox;
-    @FXML private DatePicker dateFilterPicker;
-    @FXML private Button bellButton;
-    @FXML private Label reminderCountLabel; // Add this line
+    @FXML
+    private FlowPane notesContainer;
+    @FXML
+    private Button addNoteButton;
+    @FXML
+    private VBox colorPickerBox;
+    @FXML
+    private ScrollPane notesScrollPane;
+    @FXML
+    private Button backToTopButton;
+    @FXML
+    private TextField searchField;
+    @FXML
+    private Button searchButton;
+    @FXML
+    private ComboBox<String> colorFilterComboBox;
+    @FXML
+    private ComboBox<String> statusFilterComboBox;
+    @FXML
+    private DatePicker dateFilterPicker;
+    @FXML
+    private Button bellButton;
+    @FXML
+    private Label reminderCountLabel;
 
     private String selectedColor = null;
     private final List<Node> allNotes = new ArrayList<>();
@@ -66,7 +81,8 @@ public class MainController implements Initializable {
             "Green", "#E5FF99"
     );
     private ScheduledExecutorService scheduler;
-    private final ObservableList<String>    reminders = FXCollections.observableArrayList();
+    private final ObservableList<ReminderItem> reminders = FXCollections.observableArrayList();
+    private final Map<Note, Boolean> notificationShown = new HashMap<>();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -87,13 +103,10 @@ public class MainController implements Initializable {
         setupScrollPane();
         setupSearchField();
         setupFilters();
-
-        // Start the reminder check scheduler
         startReminderCheckScheduler();
     }
 
     private void startReminderCheckScheduler() {
-        // Schedule a task to run every minute
         scheduler.scheduleAtFixedRate(this::checkReminders, 0, 1, TimeUnit.MINUTES);
     }
 
@@ -102,15 +115,13 @@ public class MainController implements Initializable {
             for (Node node : allNotes) {
                 if (node instanceof VBox noteBox) {
                     Note note = (Note) noteBox.getUserData();
-                    if (note != null && note.hasReminder() && !note.isReminderDone()) {
+                    if (note != null && note.hasReminder() && note.isReminderDone()) {
                         LocalDateTime reminderDateTime = LocalDateTime.of(note.getReminderDate(), note.getReminderTime());
-                        boolean reminderHasPassed = reminderDateTime.isBefore(LocalDateTime.now());
-
-                        if (reminderHasPassed) {
-                            // Reminder time has passed, mark as completed
+                        if (reminderDateTime.isBefore(LocalDateTime.now())) {
                             note.setReminderDone(true);
+                            note.setStatus("Completed");
                             Database.updateNote(note);
-                            updateNoteInUI(note, noteBox); // Refresh the UI
+                            updateNoteInUI(note, noteBox);
                         }
                     }
                 }
@@ -119,11 +130,8 @@ public class MainController implements Initializable {
     }
 
     private void updateNoteInUI(Note note, VBox noteBox) {
-        // Remove the old note from the UI
         notesContainer.getChildren().remove(noteBox);
         allNotes.remove(noteBox);
-
-        // Add the updated note back to the UI
         addNoteToUI(note);
     }
 
@@ -132,29 +140,46 @@ public class MainController implements Initializable {
 
         if (delay > 0) {
             scheduler.schedule(() -> {
-                System.out.println("Notification: Time to check your note!");
                 Platform.runLater(() -> {
                     NotificationService.showNotification("Note Reminder", "Time to check your note!");
-                    playSound(); // Play sound when reminder is triggered
+                    playSound();
+                    note.setStatus("Completed");
+                    Database.updateNote(note);
                 });
             }, delay, TimeUnit.MILLISECONDS);
-        } else {
-            System.out.println("Cannot set reminder in the past.");
         }
     }
 
-    // Method to play a sound
+    private void showNotificationForNote(Note note) {
+        if (!notificationShown.containsKey(note) || !notificationShown.get(note)) {
+            notificationShown.put(note, true);
+            updateReminderCountLabel(getNotificationCount());
+        }
+    }
+
+    private int getNotificationCount() {
+        int count = 0;
+        for (Node node : allNotes) {
+            if (node instanceof VBox noteBox) {
+                Note note = (Note) noteBox.getUserData();
+                if (note != null && note.hasReminder() && notificationShown.getOrDefault(note, false)) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
     private void playSound() {
         try {
             String soundFile = "src/main/resources/com/example/notefication_app/sound/alarm.wav";
-            System.out.println("Attempting to play sound from: " + soundFile); // Debugging
             Media sound = new Media(new File(soundFile).toURI().toString());
             MediaPlayer mediaPlayer = new MediaPlayer(sound);
             mediaPlayer.setOnError(() -> System.err.println("MediaPlayer error: " + mediaPlayer.getError().getMessage()));
             mediaPlayer.play();
         } catch (Exception e) {
             System.err.println("Error playing sound: " + e.getMessage());
-            e.printStackTrace(); // Print the full stack trace for debugging
+            e.printStackTrace();
         }
     }
 
@@ -335,14 +360,14 @@ public class MainController implements Initializable {
         draftInput.setWrapText(true);
         draftInput.setPromptText("Write a note...");
         draftInput.setStyle(""" 
-            -fx-background-color: rgba(255,255,255,0.85);
-            -fx-background-radius: 12;
-            -fx-padding: 8;
-            -fx-font-size: 13px;
-            -fx-border-color: transparent;
-            -fx-focus-color: transparent;
-            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 3, 0.1, 0, 1);
-        """);
+                    -fx-background-color: rgba(255,255,255,0.85);
+                    -fx-background-radius: 12;
+                    -fx-padding: 8;
+                    -fx-font-size: 13px;
+                    -fx-border-color: transparent;
+                    -fx-focus-color: transparent;
+                    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 3, 0.1, 0, 1);
+                """);
         draftInput.setPrefRowCount(4);
         draftInput.setPrefWidth(170);
         return draftInput;
@@ -351,9 +376,12 @@ public class MainController implements Initializable {
     private void loadNotesFromDatabase() {
         allNotes.clear();
         notesContainer.getChildren().clear();
+        notificationShown.clear(); // Clear the notification status when loading notes
+
         for (Note note : Database.getAllNotes()) {
             addNoteToUI(note);
         }
+        updateReminderCountLabel(0);
     }
 
     private void addNoteToUI(Note note) {
@@ -372,7 +400,7 @@ public class MainController implements Initializable {
             Label statusLabel = new Label("Status:");
             statusLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #444;");
 
-            Text status = new Text(note.hasReminder() && !note.isReminderDone() ? "Pending" : "");
+            Text status = new Text(note.hasReminder() && note.isReminderDone() ? "Pending" : "Completed");
             status.setStyle("-fx-font-size: 10px; -fx-fill: #444;");
 
             statusBox.getChildren().addAll(statusLabel, status);
@@ -396,11 +424,18 @@ public class MainController implements Initializable {
         HBox bottomBar = new HBox(6);
         bottomBar.setStyle("-fx-alignment: center-right;");
 
-        Text date = new Text(note.getFormattedDate());
-        date.setStyle("-fx-font-size: 10px; -fx-fill: #444;");
+        // Get the current time
+        LocalTime currentTime = LocalTime.now();
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("hh:mm a");
+        String formattedTime = currentTime.format(timeFormatter);
+
+        // Append the creation time to the date
+        String dateTimeString = note.getFormattedDate() + " " + formattedTime;
+        Text dateTimeText = new Text(dateTimeString);
+        dateTimeText.setStyle("-fx-font-size: 10px; -fx-fill: #444;");
 
         Region hSpacer = new Region();
-        HBox.setHgrow(hSpacer, Priority.ALWAYS);
+        bottomBar = new HBox(6);bottomBar.setHgrow(hSpacer, Priority.ALWAYS);
 
         Button editBtn = new Button("✏");
         Button deleteBtn = new Button("🗑");
@@ -409,6 +444,11 @@ public class MainController implements Initializable {
         styleIconButton(editBtn);
         styleIconButton(deleteBtn);
         styleIconButton(reminderBtn);
+
+        // Reduce the font size for the buttons
+        editBtn.setStyle(editBtn.getStyle() + "-fx-font-size: 12px;");
+        deleteBtn.setStyle(deleteBtn.getStyle() + "-fx-font-size: 14px;");
+        reminderBtn.setStyle(reminderBtn.getStyle() + "-fx-font-size: 14px;");
 
         editBtn.setOnAction(_ -> showEditNote(noteBox, note));
         deleteBtn.setOnAction(_ -> {
@@ -420,7 +460,7 @@ public class MainController implements Initializable {
 
         reminderBtn.setOnAction(_ -> setReminderForNote(note, note.getColor()));
 
-        bottomBar.getChildren().addAll(date, hSpacer, editBtn, deleteBtn, reminderBtn);
+        bottomBar.getChildren().addAll(dateTimeText, hSpacer, editBtn, deleteBtn, reminderBtn);
 
         noteBox.getChildren().addAll(content);
         if (!statusBox.getChildren().isEmpty()) {
@@ -458,7 +498,7 @@ public class MainController implements Initializable {
                 "-fx-border-radius: 15;");
 
         VBox contentBox = new VBox(10);
-        contentBox.setPadding(new javafx.geometry.Insets(15));
+        contentBox.setPadding(new Insets(15));
         contentBox.setStyle("-fx-background-color: rgba(255,255,255,0.7);" +
                 "-fx-background-radius: 10;" +
                 "-fx-padding: 15;");
@@ -488,11 +528,13 @@ public class MainController implements Initializable {
                 LocalTime reminderTime = dateTimePicker.getSelectedTime();
                 if (reminderDate != null && reminderTime != null) {
                     note.setReminder(reminderDate, reminderTime);
-                    Database.updateNote(note);
+                    note.setStatus("Pending"); // Set status to Pending
+                    Database.updateNote(note); // Update note in the database
 
                     LocalDateTime reminderDateTime = LocalDateTime.of(reminderDate, reminderTime);
                     scheduleNotification(reminderDateTime, note);
 
+                    // Update UI
                     for (Node node : allNotes) {
                         if (node instanceof VBox vbox && vbox.getUserData() == note) {
                             notesContainer.getChildren().remove(vbox);
@@ -500,22 +542,7 @@ public class MainController implements Initializable {
                             break;
                         }
                     }
-                    addNoteToUI(note);
-
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle("Reminder Set");
-                    alert.setHeaderText(null);
-                    alert.setContentText("Reminder set for " + note.getFormattedReminder());
-
-                    DialogPane alertPane = alert.getDialogPane();
-                    alertPane.setStyle("-fx-background-color: " + noteColor + ";" +
-                            "-fx-background-radius: 15;" +
-                            "-fx-border-radius: 15;");
-
-                    Button alertButton = (Button) alertPane.lookupButton(ButtonType.OK);
-                    stylePrimaryButton(alertButton);
-
-                    alert.showAndWait();
+                    addNoteToUI(note); // Add updated note to UI
                 }
             }
             return null;
@@ -529,13 +556,13 @@ public class MainController implements Initializable {
         editArea.setWrapText(true);
         editArea.setPrefRowCount(4);
         editArea.setStyle(""" 
-            -fx-background-color: white;
-            -fx-background-radius: 10;
-            -fx-padding: 8;
-            -fx-font-size: 13px;
-            -fx-border-color: transparent;
-            -fx-focus-color: transparent;
-        """);
+                    -fx-background-color: white;
+                    -fx-background-radius: 10;
+                    -fx-padding: 8;
+                    -fx-font-size: 13px;
+                    -fx-border-color: transparent;
+                    -fx-focus-color: transparent;
+                """);
 
         Button saveEdit = new Button("Update");
         stylePrimaryButton(saveEdit);
@@ -617,32 +644,32 @@ public class MainController implements Initializable {
 
     private void styleSecondaryButton(Button button) {
         button.setStyle(""" 
-            -fx-background-color: rgba(120,120,120,0.2);
-            -fx-text-fill: #555;
-            -fx-font-weight: normal;
-            -fx-padding: 8 16;
-            -fx-border-radius: 12;
-        """);
+                    -fx-background-color: rgba(120,120,120,0.2);
+                    -fx-text-fill: #555;
+                    -fx-font-weight: normal;
+                    -fx-padding: 8 16;
+                    -fx-border-radius: 12;
+                """);
     }
 
     private void styleIconButton(Button button) {
         button.setStyle(""" 
-            -fx-background-color: transparent;
-            -fx-text-fill: #555;
-            -fx-font-size: 18px;
-            -fx-border-radius: 5;
-            -fx-padding: 5;
-        """);
+                    -fx-background-color: transparent;
+                    -fx-text-fill: #555;
+                    -fx-font-size: 14px;
+                    -fx-border-radius: 5;
+                    -fx-padding: 5;
+                """);
     }
 
     private void stylePrimaryButton(Button button) {
         button.setStyle(""" 
-            -fx-background-color: #5C6BC0;
-            -fx-text-fill: white;
-            -fx-font-weight: bold;
-            -fx-padding: 8 16;
-            -fx-border-radius: 12;
-        """);
+                    -fx-background-color: #5C6BC0;
+                    -fx-text-fill: white;
+                    -fx-font-weight: bold;
+                    -fx-padding: 8 16;
+                    -fx-border-radius: 12;
+                """);
     }
 
     private void onNoteHoverEnter(MouseEvent event) {
@@ -661,6 +688,7 @@ public class MainController implements Initializable {
 
     @FXML
     protected void onBellClicked(ActionEvent actionEvent) {
+        resetNotificationCount();
         loadReminders(); // Load reminders from notes
         if (reminders.isEmpty()) {
             showNoRemindersMessage();
@@ -669,19 +697,25 @@ public class MainController implements Initializable {
         }
     }
 
+    private void resetNotificationCount() {
+        notificationShown.clear();
+        updateReminderCountLabel(0);
+    }
+
     private void loadReminders() {
         reminders.clear();
-        int reminderCount = 0; // Counter for reminders
         for (Node node : allNotes) {
             if (node instanceof VBox noteBox) {
                 Note note = (Note) noteBox.getUserData();
                 if (note != null && note.hasReminder()) {
-                    reminders.add(note.getContent() + " - " + note.getFormattedReminder());
-                    reminderCount++; // Increment counter
+                    String content = note.getContent();
+                    if (content.length() > 100) { // Limit content length
+                        content = content.substring(0, 100) + "..."; // Truncate and add ellipsis
+                    }
+                    reminders.add(new ReminderItem(content + " - " + note.getFormattedReminder(), note.getColor(), note));
                 }
             }
         }
-        updateReminderCountLabel(reminderCount); // Update the label
     }
 
     private void updateReminderCountLabel(int count) {
@@ -702,10 +736,7 @@ public class MainController implements Initializable {
         // Customize the alert's style
         DialogPane dialogPane = alert.getDialogPane();
         dialogPane.setStyle("-fx-background-color: #E0E0E0;"); // Light gray background
-        dialogPane.setHeaderText("No Reminders");
-        dialogPane.setContentText("No reminders have been set.");
 
-        // Style the OK button
         ButtonType okButtonType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
         alert.getButtonTypes().setAll(okButtonType);
         Button okButton = (Button) alert.getDialogPane().lookupButton(okButtonType);
@@ -718,53 +749,96 @@ public class MainController implements Initializable {
         Popup popup = new Popup();
         popup.setAutoHide(true); // Close when clicking outside
 
-        VBox popupContent = getVBox();
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setFitToWidth(true); // Make the content fit the width
+        scrollPane.setContent(getVBox());
+
+        VBox popupContent = new VBox(scrollPane);
         popupContent.setStyle("""
-            -fx-background-color: white;
-            -fx-padding: 10;
-            -fx-border-color: #757575;
-            -fx-border-width: 1;
-            -fx-border-radius: 5;
-        """);
+                    -fx-background-color: #f0f0f0; /* Light gray background */
+                    -fx-padding: 10;
+                    -fx-border-color: #cccccc;
+                    -fx-border-width: 1;
+                    -fx-border-radius: 5;
+                """);
+
+        double screenWidth = Screen.getPrimary().getVisualBounds().getWidth();
+        double screenHeight = Screen.getPrimary().getVisualBounds().getHeight();
+        double popupWidth = Math.min(screenWidth * 0.4, 400);
+        double popupHeight = Math.min(screenHeight * 0.5, 500);
+        popupContent.setPrefSize(popupWidth, popupHeight);
 
         popup.getContent().add(popupContent);
 
-        // Calculate position relative to the bell button
+        // Calculate position relative to the bell button (bottom-right corner)
         Window window = bellButton.getScene().getWindow();
-        double x = window.getX() + bellButton.localToScene(bellButton.getBoundsInLocal()).getMinX() + 40;
-        double y = window.getY() + bellButton.localToScene(bellButton.getBoundsInLocal()).getMinY() + 70;
+        double x = window.getX() + bellButton.localToScene(bellButton.getBoundsInLocal()).getMinX() - popupWidth + bellButton.getWidth();
+        double y = window.getY() + bellButton.localToScene(bellButton.getBoundsInLocal()).getMinY() + bellButton.getHeight();
 
         popup.show(window, x, y);
     }
 
     private VBox getVBox() {
-        ListView<String> listView = new ListView<>(reminders);
-        listView.setPrefWidth(300);
-        listView.setPrefHeight(200);
+        ListView<ReminderItem> listView = new ListView<>(reminders);
+        listView.setPrefWidth(380);
+        listView.setFixedCellSize(70);
+        listView.setPrefHeight(reminders.size() * 70 + 10);
 
-        // Styling for the ListView
         listView.setStyle("""
-            -fx-background-color: white;
-            -fx-border-color: #BDBDBD;
-            -fx-border-width: 1;
-            -fx-border-radius: 5;
-            -fx-padding: 5;
-        """);
+                    -fx-background-color: transparent;
+                    -fx-border-color: transparent;
+                    -fx-border-width: 0;
+                    -fx-border-radius: 0;
+                    -fx-padding: 0;
+                """);
 
-        // Styling for ListView items (optional)
         listView.setCellFactory(_ -> new ListCell<>() {
             @Override
-            protected void updateItem(String item, boolean empty) {
+            protected void updateItem(ReminderItem item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
+                    setGraphic(null);
+                    setStyle(null);
                 } else {
-                    setText(item);
-                    setStyle("-fx-padding: 8;");
+                    HBox cellContent = new HBox(10);
+                    cellContent.setAlignment(Pos.CENTER_LEFT);
+                    Text text = new Text(item.text);
+                    text.setStyle("-fx-font-size: 14px;");
+
+                    Button deleteButton = new Button("🗑️");
+                    styleIconButton(deleteButton);
+                    deleteButton.setOnAction(event -> {
+                        Note note = item.note;
+                        if (note != null) {
+                            note.setReminder(null, null);
+                            Database.updateNote(note);
+                            notificationShown.remove(note);
+                            loadReminders();
+                            updateReminderCountLabel(getNotificationCount());
+                            ((ListView<ReminderItem>) getListView()).getItems().remove(item);
+                        }
+                    });
+                    cellContent.getChildren().addAll(text, deleteButton);
+                    setGraphic(cellContent);
+                    setStyle("-fx-padding: 8; -fx-background-color: " + item.color + "; -fx-text-fill: #333333; -fx-font-size: 16px;");
                 }
             }
         });
 
         return new VBox(listView);
+    }
+
+    // Helper class to hold reminder text and color
+    private static class ReminderItem {
+        String text;
+        String color;
+        Note note;
+
+        public ReminderItem(String text, String color, Note note) {
+            this.text = text;
+            this.color = color;
+            this.note = note;
+        }
     }
 }

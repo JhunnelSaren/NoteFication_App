@@ -14,6 +14,8 @@ public class Note {
     private LocalDate reminderDate;
     private LocalTime reminderTime;
     private List<Task> tasks;
+    private String status; // Use status instead of completed
+    private boolean reminderDone; // Track if the reminder has been done
 
     // Constructor for notes without reminder
     public Note(String content, String color, LocalDate date) {
@@ -21,6 +23,8 @@ public class Note {
         this.color = color;
         this.date = date;
         this.tasks = new ArrayList<>();
+        this.status = "Pending"; // Default status
+        this.reminderDone = false; // Default reminder state
     }
 
     // Getters and setters
@@ -73,6 +77,8 @@ public class Note {
     public void setReminder(LocalDate date, LocalTime time) {
         this.reminderDate = date;
         this.reminderTime = time;
+        this.status = "Pending"; // Set status to Pending when reminder is set
+        this.reminderDone = false; // Reset reminder done status
     }
 
     // Method to check if the note has a reminder
@@ -89,10 +95,25 @@ public class Note {
         return "No reminder set";
     }
 
+    // Check if the reminder is done
     public boolean isReminderDone() {
-        return true;
+        return !reminderDone;
     }
 
-    public void setReminderDone(boolean ignoredB) {
+    // Set the reminder as done
+    public void setReminderDone(boolean done) {
+        this.reminderDone = done;
+        if (done) {
+            this.status = "Completed"; // Update status when reminder is done
+        }
+    }
+
+    // Set the status directly
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getStatus() {
+        return status;
     }
 }
