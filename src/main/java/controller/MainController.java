@@ -84,6 +84,9 @@ public class MainController implements Initializable {
     private final ObservableList<ReminderItem> reminders = FXCollections.observableArrayList();
     private final Map<Note, Boolean> notificationShown = new HashMap<>();
 
+    // Added notification count variable
+    private int notificationCount = 0;
+
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         Database.initialize();
@@ -177,6 +180,10 @@ public class MainController implements Initializable {
             MediaPlayer mediaPlayer = new MediaPlayer(sound);
             mediaPlayer.setOnError(() -> System.err.println("MediaPlayer error: " + mediaPlayer.getError().getMessage()));
             mediaPlayer.play();
+
+            // Increment notification count and update the label
+            notificationCount++;
+            updateReminderCountLabel(notificationCount);
         } catch (Exception e) {
             System.err.println("Error playing sound: " + e.getMessage());
             e.printStackTrace();
@@ -688,7 +695,7 @@ public class MainController implements Initializable {
 
     @FXML
     protected void onBellClicked(ActionEvent actionEvent) {
-        resetNotificationCount();
+        resetNotificationCount(); // Resets the count and updates the label
         loadReminders(); // Load reminders from notes
         if (reminders.isEmpty()) {
             showNoRemindersMessage();
@@ -698,8 +705,8 @@ public class MainController implements Initializable {
     }
 
     private void resetNotificationCount() {
-        notificationShown.clear();
-        updateReminderCountLabel(0);
+        notificationCount = 0; // Reset the count
+        updateReminderCountLabel(notificationCount); // Update the label
     }
 
     private void loadReminders() {
@@ -719,12 +726,8 @@ public class MainController implements Initializable {
     }
 
     private void updateReminderCountLabel(int count) {
-        if (count > 0) {
-            reminderCountLabel.setText(String.valueOf(count));
-            reminderCountLabel.setVisible(true);
-        } else {
-            reminderCountLabel.setVisible(false);
-        }
+        reminderCountLabel.setText(String.valueOf(count)); // Update with the current count
+        reminderCountLabel.setVisible(count > 0); // Show label if count is greater than 0
     }
 
     private void showNoRemindersMessage() {
