@@ -450,7 +450,7 @@ public class MainController implements Initializable {
         dateTimeText.setStyle("-fx-font-size: 10px; -fx-fill: #444;");
 
         Region hSpacer = new Region();
-        bottomBar = new HBox(6);bottomBar.setHgrow(hSpacer, Priority.ALWAYS);
+        bottomBar = new HBox(6); bottomBar.setHgrow(hSpacer, Priority.ALWAYS);
 
         Button editBtn = new Button("✏");
         Button deleteBtn = new Button("🗑");
@@ -848,5 +848,18 @@ public class MainController implements Initializable {
             this.color = color;
             this.note = note;
         }
+    }
+
+    // New method to save all notes and application state when closing
+    public void saveApplicationState() {
+        for (Node node : allNotes) {
+            if (node instanceof VBox noteBox) {
+                Note note = (Note) noteBox.getUserData();
+                if (note != null) {
+                    Database.updateNote(note);
+                }
+            }
+        }
+        // Optionally save other application states (e.g., filters) here
     }
 }
