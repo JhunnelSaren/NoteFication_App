@@ -69,12 +69,12 @@
                     <ComboBox fx:id="colorFilterComboBox" promptText="Color">
                         <items>
                             <FXCollections fx:factory="observableArrayList">
-                                <String />
-                                <String />
-                                <String />
-                                <String />
-                                <String />
-                                <String />
+                                <String fx:value="All" />
+                                <String fx:value="Yellow" />
+                                <String fx:value="Red" />
+                                <String fx:value="Purple" />
+                                <String fx:value="Cyan" />
+                                <String fx:value="Green" />
                             </FXCollections>
                         </items>
                     </ComboBox>
@@ -85,13 +85,13 @@
                             <FXCollections fx:factory="observableArrayList">
                                 <String fx:value="All" />
                                 <String fx:value="Completed" />
-                                <String />
+                                <String fx:value="Pending" />
                             </FXCollections>
                         </items>
                     </ComboBox>
 
                     <!-- Filter by Date -->
-                    <DatePicker fx:id="dateFilterPicker" promptText="By Date" />
+                    <ComboBox fx:id="dateFilterComboBox" promptText="By Date" />
                 </HBox>
 
                 <!-- Header -->

@@ -46,6 +46,7 @@ public class MainController implements Initializable {
     public Button colorBlue;
     public Button colorPurple;
     public Button colorOrange;
+
     @FXML
     private FlowPane notesContainer;
     @FXML
@@ -65,7 +66,7 @@ public class MainController implements Initializable {
     @FXML
     private ComboBox<String> statusFilterComboBox;
     @FXML
-    private DatePicker dateFilterPicker;
+    private ComboBox<LocalDate> dateFilterComboBox; // Updated to ComboBox for date filtering
     @FXML
     private Button bellButton;
     @FXML
@@ -264,7 +265,7 @@ public class MainController implements Initializable {
         statusFilterComboBox.setValue("All");
         statusFilterComboBox.setOnAction(_ -> applyFilters());
 
-        dateFilterPicker.setOnAction(_ -> applyFilters());
+        dateFilterComboBox.setOnAction(_ -> applyFilters()); // Updated to use the date filter combo box
     }
 
     private void toggleColorPicker() {
@@ -384,10 +385,17 @@ public class MainController implements Initializable {
         allNotes.clear();
         notesContainer.getChildren().clear();
         notificationShown.clear(); // Clear the notification status when loading notes
+        dateFilterComboBox.getItems().clear(); // Clear existing dates
+
+        Set<LocalDate> uniqueDates = new HashSet<>();
 
         for (Note note : Database.getAllNotes()) {
             addNoteToUI(note);
+            uniqueDates.add(note.getDate()); // Collect unique dates
         }
+
+        // Populate the date filter dropdown
+        dateFilterComboBox.getItems().addAll(uniqueDates);
         updateReminderCountLabel(0);
     }
 
@@ -594,7 +602,7 @@ public class MainController implements Initializable {
     private void applyFilters() {
         String selectedColorName = colorFilterComboBox.getValue();
         String selectedStatus = statusFilterComboBox.getValue();
-        LocalDate selectedDate = dateFilterPicker.getValue();
+        LocalDate selectedDate = dateFilterComboBox.getValue(); // Use the ComboBox for date filtering
 
         notesContainer.getChildren().clear();
 
@@ -603,42 +611,39 @@ public class MainController implements Initializable {
 
             boolean matches = true;
 
+            // Color filter
             if (!"All".equals(selectedColorName)) {
                 String selectedColorHex = colorMap.getOrDefault(selectedColorName, "");
                 matches &= noteBox.getStyle().contains(selectedColorHex);
             }
 
+            // Status filter
             if (!"All".equals(selectedStatus)) {
-                boolean isPending = false;
-                boolean isCompleted = false;
-                for (Node child : noteBox.getChildren()) {
-                    if (child instanceof Text statusText) {
-                        isPending = statusText.getText().equals("Pending");
-                        isCompleted = statusText.getText().equals("Completed");
-                        break;
+                Note note = (Note) noteBox.getUserData();
+                if (note != null) {
+                    // Only consider status if the note has a reminder
+                    if (note.hasReminder()) {
+                        if ("Pending".equals(selectedStatus)) {
+                            matches &= note.getStatus().equals("Pending");
+                        } else if ("Completed".equals(selectedStatus)) {
+                            matches &= note.getStatus().equals("Completed");
+                        }
+                    } else {
+                        matches = false; // Exclude notes without reminders from status filter
                     }
-                }
-                if ("Pending".equals(selectedStatus)) {
-                    matches &= isPending;
-                } else if ("Completed".equals(selectedStatus)) {
-                    matches &= isCompleted;
                 }
             }
 
+            // Date filter
             if (selectedDate != null) {
-                boolean dateMatched = false;
-                for (Node child : noteBox.getChildren()) {
-                    if (child instanceof Text dateText && dateText.getStyle().contains("date")) {
-                        String noteDate = dateText.getText();
-                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
-                        LocalDate noteLocalDate = LocalDate.parse(noteDate, formatter);
-                        dateMatched = noteLocalDate.equals(selectedDate);
-                        break;
-                    }
+                Note note = (Note) noteBox.getUserData();
+                if (note != null) {
+                    LocalDate noteDate = note.getDate();
+                    matches &= noteDate.equals(selectedDate); // Ensure the note's date matches the selected date
                 }
-                matches &= dateMatched;
             }
 
+            // Add note to UI if it matches all criteria
             if (matches) {
                 notesContainer.getChildren().add(node);
             }
