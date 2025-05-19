@@ -116,4 +116,8 @@ public class Note {
     public String getStatus() {
         return status;
     }
+
+    public String getCreationTime() {
+        return null;
+    }
 }

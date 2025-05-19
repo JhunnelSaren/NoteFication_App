@@ -20,6 +20,7 @@ public class Database {
 
     private static final Gson gson = new Gson();
     private static final Type taskListType = new TypeToken<List<Task>>() {}.getType();
+    private static LocalTime LocalTime;
 
     static {
         createTableIfNotExists();
@@ -173,5 +174,8 @@ public class Database {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    public static void testInsertNote() {
     }
 }

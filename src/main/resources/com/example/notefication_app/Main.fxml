@@ -97,6 +97,9 @@
                 <!-- Header -->
                 <Label style="-fx-font-size: 28px; -fx-font-weight: bold;" text="Notes" />
 
+                <!-- Dark Mode Toggle -->
+                <HBox spacing="10" />
+
                 <!-- Scrollable Notes Container -->
                 <ScrollPane fx:id="notesScrollPane" fitToWidth="true" style="-fx-background-color:transparent;" VBox.vgrow="ALWAYS">
                     <FlowPane fx:id="notesContainer" hgap="20" prefWrapLength="800" vgap="20" VBox.vgrow="ALWAYS" />
