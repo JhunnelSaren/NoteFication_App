@@ -146,7 +146,7 @@ public class MainController implements Initializable {
         if (delay > 0) {
             scheduler.schedule(() -> {
                 Platform.runLater(() -> {
-                    NotificationService.showNotification("Note Reminder", "Time to check your note!");
+                    NotificationService.showNotification("Notification", "Time to check your note!");
                     playSound();
                     note.setStatus("Completed");
                     Database.updateNote(note);
@@ -523,7 +523,7 @@ public class MainController implements Initializable {
                 "-fx-background-radius: 10;" +
                 "-fx-padding: 15;");
 
-        Label headerLabel = new Label("Set Reminder for Note");
+        Label headerLabel = new Label("Set Reminder for this Note");
         headerLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
         Label instructionLabel = new Label("Select date and time for your reminder:");
