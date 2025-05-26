@@ -8,7 +8,6 @@ module com.example.noteifcation_app {
     requires javafx.media;
 
 
-    opens com.example.notefication_app to javafx.fxml;
     exports com.example.notefication_app;
     exports controller;
     opens model to com.google.gson;
@@ -16,5 +15,6 @@ module com.example.noteifcation_app {
     opens com.example.anote2.db to javafx.fxml;
     opens controller to com.google.gson, javafx.fxml;
     opens service to com.google.gson;
+    opens com.example.notefication_app to com.google.gson, javafx.fxml;
 
 }

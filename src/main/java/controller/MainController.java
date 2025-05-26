@@ -1,6 +1,5 @@
 package controller;
 
-import DateTimePicker.DateTimePicker;
 import com.example.anote2.db.Database;
 import javafx.animation.*;
 import javafx.application.Platform;
@@ -37,6 +36,7 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 @SuppressWarnings("ALL")
 public class MainController implements Initializable {
@@ -513,40 +513,83 @@ public class MainController implements Initializable {
         dialog.setTitle("Set Reminder");
 
         DialogPane dialogPane = dialog.getDialogPane();
+        dialogPane.setMinWidth(400); // Expanded width
+        dialogPane.setMinHeight(320); // Expanded height
         dialogPane.setStyle("-fx-background-color: " + noteColor + ";" +
+                "-fx-background-radius: 20;" +
+                "-fx-border-radius: 20;" +
+                "-fx-padding: 20;");
+
+        VBox contentBox = new VBox(20); // Increased spacing
+        contentBox.setPadding(new Insets(25));
+        contentBox.setStyle("-fx-background-color: rgba(255,255,255,0.9);" +
                 "-fx-background-radius: 15;" +
-                "-fx-border-radius: 15;");
+                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);");
 
-        VBox contentBox = new VBox(10);
-        contentBox.setPadding(new Insets(15));
-        contentBox.setStyle("-fx-background-color: rgba(255,255,255,0.7);" +
-                "-fx-background-radius: 10;" +
-                "-fx-padding: 15;");
+        Label headerLabel = new Label("🔔 Set Reminder for This Note");
+        headerLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #222;");
 
-        Label headerLabel = new Label("Set Reminder for this Note");
-        headerLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        Label instructionLabel = new Label("Please select a date and time for your reminder:");
+        instructionLabel.setStyle("-fx-font-size: 13.5px; -fx-text-fill: #444;");
 
-        Label instructionLabel = new Label("Select date and time for your reminder:");
-        instructionLabel.setStyle("-fx-font-size: 12px;");
+        // Date Picker
+        DatePicker datePicker = new DatePicker();
+        datePicker.setPrefWidth(260);
+        datePicker.setStyle("-fx-font-size: 15px; -fx-background-radius: 8; -fx-padding: 8;");
 
-        DateTimePicker dateTimePicker = new DateTimePicker();
-        dateTimePicker.setStyle("-fx-background-color: white; -fx-background-radius: 8;");
+        // Hour ComboBox (1–12)
+        ComboBox<Integer> hourBox = new ComboBox<>();
+        IntStream.rangeClosed(1, 12).forEach(hourBox.getItems()::add);
+        hourBox.setValue(12);
+        hourBox.setPrefWidth(80);
+        hourBox.setStyle("-fx-font-size: 14px; -fx-background-radius: 8;");
 
-        contentBox.getChildren().addAll(headerLabel, instructionLabel, dateTimePicker);
+        // Minute ComboBox (00–59)
+        ComboBox<String> minuteBox = new ComboBox<>();
+        IntStream.range(0, 60).forEach(min -> minuteBox.getItems().add(String.format("%02d", min)));
+        minuteBox.setValue("00");
+        minuteBox.setPrefWidth(80);
+        minuteBox.setStyle("-fx-font-size: 14px; -fx-background-radius: 8;");
+
+        // AM/PM ComboBox
+        ComboBox<String> amPmBox = new ComboBox<>();
+        amPmBox.getItems().addAll("AM", "PM");
+        amPmBox.setValue("AM");
+        amPmBox.setPrefWidth(80);
+        amPmBox.setStyle("-fx-font-size: 14px; -fx-background-radius: 8;");
+
+        HBox timeBox = new HBox(15, hourBox, minuteBox, amPmBox);
+        timeBox.setAlignment(Pos.CENTER);
+        timeBox.setPadding(new Insets(10, 0, 0, 0));
+
+        VBox dateTimeBox = new VBox(15, datePicker, timeBox);
+        dateTimeBox.setAlignment(Pos.CENTER);
+
+        contentBox.getChildren().addAll(headerLabel, instructionLabel, dateTimeBox);
+        contentBox.setAlignment(Pos.TOP_CENTER);
+
         dialogPane.setContent(contentBox);
-
         dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        // Style buttons
         Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
         Button cancelButton = (Button) dialogPane.lookupButton(ButtonType.CANCEL);
-
         stylePrimaryButton(okButton);
         styleSecondaryButton(cancelButton);
 
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == ButtonType.OK) {
-                LocalDate reminderDate = dateTimePicker.getSelectedDate();
-                LocalTime reminderTime = dateTimePicker.getSelectedTime();
-                if (reminderDate != null && reminderTime != null) {
+                LocalDate reminderDate = datePicker.getValue();
+                Integer hour = hourBox.getValue();
+                String minuteStr = minuteBox.getValue();
+                String amPm = amPmBox.getValue();
+
+                if (reminderDate != null && hour != null && minuteStr != null && amPm != null) {
+                    int minute = Integer.parseInt(minuteStr);
+                    if (amPm.equals("PM") && hour != 12) hour += 12;
+                    if (amPm.equals("AM") && hour == 12) hour = 0;
+
+                    LocalTime reminderTime = LocalTime.of(hour, minute);
                     note.setReminder(reminderDate, reminderTime);
                     note.setStatus("Pending");
                     Database.updateNote(note);
@@ -569,6 +612,7 @@ public class MainController implements Initializable {
 
         dialog.showAndWait();
     }
+
 
     private void showEditNote(VBox noteBox, Note note) {
         TextArea editArea = new TextArea(note.getContent());
@@ -673,9 +717,9 @@ public class MainController implements Initializable {
 
     private void styleSecondaryButton(Button button) {
         button.setStyle(""" 
-                    -fx-background-color: rgba(120,120,120,0.2);
-                    -fx-text-fill: #555;
-                    -fx-font-weight: normal;
+                    -fx-background-color: #5C6BC0;
+                    -fx-text-fill: White;
+                    -fx-font-weight: Bold;
                     -fx-padding: 8 16;
                     -fx-border-radius: 12;
                 """);
